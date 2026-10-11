@@ -77,7 +77,7 @@ export const CalendarHabitPlanner: React.FC = () => {
   // New Event Form State
   const [summary, setSummary] = useState('🪥 Morning Toothbrushing with MP');
   const [description, setDescription] = useState(
-    'Brush teeth for 2 minutes to chase away the sugar bugs! As learned on MP Kids Show.'
+    'Brush teeth for 2 minutes to chase away the sugar bugs! As learned on MP.'
   );
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState('08:00');
@@ -110,7 +110,7 @@ export const CalendarHabitPlanner: React.FC = () => {
       duration: 20,
     },
     {
-      title: '📺 MP Kids Show - Sweet Machine Episode Time',
+      title: '📺 MP - Sweet Machine Episode Time',
       desc: 'Family watch time: Learn good habits with the magical sweet machine on YouTube! 🍬',
       time: '18:00',
       duration: 30,
@@ -128,7 +128,7 @@ export const CalendarHabitPlanner: React.FC = () => {
     { id: 'teeth', label: 'Morning Toothbrushing', icon: '🪥', soundType: 'brush' as const },
     { id: 'veggies', label: 'Rainbow Veggie Lunch', icon: '🥦', soundType: 'crunch' as const },
     { id: 'cleanup', label: 'Playroom Toy Cleanup', icon: '🧸', soundType: 'pop' as const },
-    { id: 'show', label: 'MP Show Story & Song', icon: '📺', soundType: 'sparkle' as const },
+    { id: 'show', label: 'MP Story & Song', icon: '📺', soundType: 'sparkle' as const },
     { id: 'bedtime', label: 'Cozy Bedtime Routine', icon: '🌙', soundType: 'sparkle' as const },
   ];
 
@@ -591,7 +591,7 @@ export const CalendarHabitPlanner: React.FC = () => {
           </div>
           <h3 className="text-xl font-bold mb-2">Connect Your Google Calendar</h3>
           <p className="text-xs text-slate-300 mb-6 leading-relaxed">
-            See and schedule good habit reminders for your kids with permission from your Google account. Never miss morning toothbrushing or MP show episode premieres!
+            See and schedule good habit reminders for your kids with permission from your Google account. Never miss morning toothbrushing or MP episode premieres!
           </p>
 
           {/* Official "Sign in with Google" Button (Specified in SKILL.md) */}
@@ -599,7 +599,7 @@ export const CalendarHabitPlanner: React.FC = () => {
             <button
               onClick={handleLogin}
               disabled={isLoggingIn}
-              className="flex items-center gap-3 bg-white text-slate-800 hover:bg-slate-100 font-semibold text-sm px-6 py-3 rounded-full shadow-lg transition-transform active:scale-95 border border-slate-300 cursor-pointer"
+              className="group flex items-center gap-3 bg-white text-slate-800 hover:bg-slate-100 font-semibold text-sm px-6 py-3 rounded-full shadow-lg transition-transform active:scale-95 border border-slate-300 cursor-pointer"
             >
               <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5">
                 <path
@@ -613,6 +613,7 @@ export const CalendarHabitPlanner: React.FC = () => {
                 <path
                   fill="#FBBC05"
                   d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+                  className="transition-all duration-300 group-hover:filter group-hover:drop-shadow-[0_0_8px_#FBBC05]"
                 />
                 <path
                   fill="#34A853"
@@ -785,7 +786,7 @@ export const CalendarHabitPlanner: React.FC = () => {
                   <CalendarIcon className="w-12 h-12 mx-auto mb-2 opacity-30" />
                   <p className="text-xs">No upcoming events scheduled yet.</p>
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Pick a preset on the left to add your first MP show habit routine!
+                    Pick a preset on the left to add your first MP habit routine!
                   </p>
                 </div>
               ) : (

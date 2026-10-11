@@ -168,7 +168,7 @@ export const CommentsSection: React.FC = () => {
                 {comment.isPinned && (
                   <span className="flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-neutral-800 px-2 py-0.5 rounded-full">
                     <Pin className="w-3 h-3 text-yellow-400" />
-                    <span>Pinned by MP kids show</span>
+                    <span>Pinned by MP</span>
                   </span>
                 )}
               </div>

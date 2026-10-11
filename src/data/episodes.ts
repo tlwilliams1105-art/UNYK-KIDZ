@@ -61,8 +61,8 @@ Watch MP learn:
 3. Putting toy cars and soccer balls neatly back in the toy chest! 🧸🚗
 4. Turning the magic candy crank and sharing sweet treats with friends! 🍭❤️
 
-Join MP on this fun adventure full of laughter, songs, and good habits! Don't forget to like and subscribe to MP kids show for more useful stories!`,
-    tags: ['#MPKidsShow', '#GoodHabits', '#SweetMachine', '#StoriesForKids', '#NurseryRhymes', '#LearnGoodHabits'],
+Join MP on this fun adventure full of laughter, songs, and good habits! Don't forget to like and subscribe to MP for more useful stories!`,
+    tags: ['#MP', '#MPShow', '#GoodHabits', '#SweetMachine', '#StoriesForKids', '#NurseryRhymes', '#LearnGoodHabits'],
     thumbnailTheme: {
       bg: '#00c4f4',
       accent: '#ffcc00',
@@ -286,7 +286,7 @@ export interface ChannelComment {
 export const INITIAL_COMMENTS: ChannelComment[] = [
   {
     id: 'pinned-mp',
-    author: 'MP kids show',
+    author: 'MP',
     avatarColor: 'bg-yellow-400 text-sky-900',
     avatarEmoji: '⭐',
     timeAgo: '2 days ago (pinned)',

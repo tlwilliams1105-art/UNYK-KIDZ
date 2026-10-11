@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Episode, EpisodeChapter } from '../data/episodes';
-import { ChrisCharacter } from './ChrisCharacter';
+import { MPCharacter } from './ChrisCharacter';
 import { SweetMachineGraphic } from './SweetMachineGraphic';
 import { StoryGameOverlay } from './StoryGameOverlay';
 import { VoiceSettingsModal } from './VoiceSettingsModal';
@@ -185,8 +185,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     }
   };
 
-  // Determine Chris expression by chapter
-  const getChrisExpression = () => {
+  // Determine MP expression by chapter
+  const getMPExpression = () => {
     if (currentChapter.id === 'c2') return 'brushing';
     if (currentChapter.id === 'c3') return 'eating';
     if (currentChapter.id === 'c5' || currentChapter.id === 'c6') return 'cheering';
@@ -258,7 +258,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <div className="absolute top-1/3 left-1/2 text-orange-400 text-3xl">🍭</div>
           <div className="absolute bottom-1/4 left-1/2 text-emerald-300 text-3xl">⭐</div>
 
-          {/* --- BIG 3D COMIC BUBBLE TITLE (MP KIDS SHOW) --- */}
+          {/* --- BIG 3D COMIC BUBBLE TITLE (MP SHOW) --- */}
           <div className="absolute top-12 sm:top-20 left-6 sm:left-14 z-10 flex flex-col items-start">
             <div className="relative">
               {/* "MP" in 3D glossy bubble comic letters */}
@@ -273,17 +273,17 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               </div>
             </div>
 
-            {/* "KIDS SHOW" in Orange/Yellow 3D Bubble text */}
+            {/* "SHOW" in Orange/Yellow 3D Bubble text */}
             <div
               className="mt-1 sm:mt-2 text-2xl sm:text-4xl md:text-5xl font-black text-yellow-300 tracking-wide [text-shadow:_0_3px_0_#e65100,_0_6px_0_#b71c1c,_0_8px_12px_rgba(0,0,0,0.4)] font-['Fredoka']"
             >
-              KIDS SHOW
+              SHOW
             </div>
           </div>
 
-          {/* --- CHRIS (Right side of thumbnail, exactly matching user image!) --- */}
+          {/* --- MP (Right side of thumbnail) --- */}
           <div className="absolute -bottom-4 right-2 sm:right-10 md:right-16 z-10 transform scale-110 sm:scale-125 md:scale-150 origin-bottom-right">
-            <ChrisCharacter expression="happy" size="xl" />
+            <MPCharacter expression="happy" size="xl" />
           </div>
 
           {/* YouTube Red Play Button in Center */}
@@ -360,9 +360,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
           </div>
 
-          {/* --- RIGHT: Animated Chris Character --- */}
-          <div className="relative z-10 transform scale-100 sm:scale-120 md:scale-130 origin-bottom-right">
-            <ChrisCharacter expression={getChrisExpression()} size="lg" />
+          {/* --- RIGHT: Animated MP Character --- */}
+          <div className="relative z-10 transform scale-100 sm:scale-120 md:scale-130 origin-bottom-right group cursor-pointer">
+            <MPCharacter expression={getMPExpression()} size="lg" />
             {/* MP Name Tag */}
             <div className="absolute -bottom-1 inset-x-0 text-center">
               <span className="bg-yellow-400 text-sky-950 font-extrabold text-xs px-3 py-0.5 rounded-full shadow border border-yellow-200">

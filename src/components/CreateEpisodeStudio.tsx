@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChrisCharacter } from './ChrisCharacter';
+import { MPCharacter } from './ChrisCharacter';
 import { sound } from '../utils/audio';
 import { Play, Wand2 } from 'lucide-react';
 
@@ -183,7 +183,7 @@ export const CreateEpisodeStudio: React.FC<CreateEpisodeStudioProps> = ({
               </div>
             </div>
             <div className="relative z-10 transform scale-110 origin-bottom-right">
-              <ChrisCharacter expression="excited" size="md" />
+              <MPCharacter expression="excited" size="md" />
             </div>
           </div>
 

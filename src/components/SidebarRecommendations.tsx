@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Episode, EPISODES } from '../data/episodes';
-import { ChrisCharacter } from './ChrisCharacter';
+import { MPCharacter } from './ChrisCharacter';
 import { sound } from '../utils/audio';
 import { Check, Sparkles } from 'lucide-react';
 
@@ -88,14 +88,14 @@ export const SidebarRecommendations: React.FC<SidebarRecommendationsProps> = ({
                   <span>🚀 ⭐ 🚗</span>
                 </div>
 
-                {/* Small Chris Face on Thumbnail */}
+                {/* Small MP Face on Thumbnail */}
                 <div className="absolute -bottom-1 -right-1 transform scale-75 origin-bottom-right">
-                  <ChrisCharacter expression="happy" size="avatar" />
+                  <MPCharacter expression="happy" size="avatar" />
                 </div>
 
                 {/* Comic Badge Title */}
                 <div className="absolute top-1.5 left-2 bg-yellow-400 text-sky-950 font-black text-[9px] px-1.5 py-0.5 rounded shadow">
-                  MP SHOW
+                  MP
                 </div>
 
                 {/* Duration Badge */}
@@ -119,7 +119,7 @@ export const SidebarRecommendations: React.FC<SidebarRecommendationsProps> = ({
                     {ep.title}
                   </h4>
                   <div className="flex items-center gap-1 text-[11px] text-slate-400 mt-1">
-                    <span>MP kids show</span>
+                    <span>MP</span>
                     <span className="bg-slate-500 text-white rounded-full p-0.5">
                       <Check className="w-2 h-2 stroke-[3]" />
                     </span>

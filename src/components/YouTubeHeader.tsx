@@ -34,7 +34,7 @@ export const YouTubeHeader: React.FC<YouTubeHeaderProps> = ({
       id: 2,
       title: 'Milestone Celebration! 🏆',
       time: '2 days ago',
-      desc: 'MP Kids Show just reached 3.67M subscribers! Thank you friends!',
+      desc: 'MP just reached 3.67M subscribers! Thank you friends!',
       unread: false,
     },
   ]);
@@ -80,7 +80,7 @@ export const YouTubeHeader: React.FC<YouTubeHeaderProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search kid shows on YouTube (e.g. MP sweet machine, good habits)"
+            placeholder="Search episodes on YouTube (e.g. MP sweet machine, good habits)"
             className="w-full bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none"
           />
         </div>

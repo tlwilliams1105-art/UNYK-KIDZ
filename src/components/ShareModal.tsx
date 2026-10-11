@@ -10,7 +10,7 @@ interface ShareModalProps {
 
 export const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, title }) => {
   const [copied, setCopied] = useState(false);
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://youtube.com/watch?v=chris-kids-show';
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://youtube.com/watch?v=mp-show';
 
   if (!isOpen) return null;
 

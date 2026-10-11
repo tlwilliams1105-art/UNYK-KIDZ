@@ -1,4 +1,4 @@
-// Web Audio API Synthesizer for Chris Kids Show
+// Web Audio API Synthesizer for MP Show
 // Produces playful sound effects and upbeat preschool background music without external audio files
 
 class SoundEngine {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Episode } from '../data/episodes';
-import { ChrisCharacter } from './ChrisCharacter';
+import { MPCharacter } from './ChrisCharacter';
 import { sound } from '../utils/audio';
 import {
   ThumbsUp,
@@ -94,15 +94,15 @@ export const VideoDetails: React.FC<VideoDetailsProps> = ({
       <div className="mt-3 flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-white/10">
         {/* Left: Channel Info */}
         <div className="flex items-center gap-3">
-          {/* Circular Chris Avatar matching YouTube icon */}
+          {/* Circular MP Avatar matching YouTube icon */}
           <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-yellow-400 bg-gradient-to-tr from-sky-400 to-yellow-300 shadow-md">
-            <ChrisCharacter expression="happy" size="avatar" className="scale-125 translate-y-1" />
+            <MPCharacter expression="happy" size="avatar" className="scale-125 translate-y-1" />
           </div>
 
           <div className="flex flex-col">
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-base text-white hover:text-sky-300 cursor-pointer transition-colors">
-                MP kids show
+                MP
               </span>
               {/* Verified Badge */}
               <span className="bg-slate-500/80 text-white rounded-full p-0.5" title="Verified Channel">

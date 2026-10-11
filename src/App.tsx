@@ -11,6 +11,7 @@ import { CalendarHabitPlanner } from './components/CalendarHabitPlanner';
 import { CommunityAndShorts } from './components/CommunityAndShorts';
 import { ShareModal } from './components/ShareModal';
 import { ColoringModal } from './components/ColoringModal';
+import { MorningAffirmation } from './components/MorningAffirmation';
 import { sound } from './utils/audio';
 import { Sparkles, Heart, Bell } from 'lucide-react';
 
@@ -146,6 +147,9 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Primary Column: Video Player + Details + Comments */}
             <div className={`lg:col-span-8 ${kidSafeMode ? 'lg:col-span-12 max-w-4xl mx-auto' : ''}`}>
+              {/* Morning Affirmation Card for MP and Kids */}
+              <MorningAffirmation onEarnSticker={handleEarnSticker} />
+
               {/* Interactive Video Show Player */}
               <VideoPlayer
                 episode={currentEpisode}
@@ -304,7 +308,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="mt-12 border-t border-white/10 py-6 text-center text-xs text-slate-500">
-        <p>MP Kids Show • 3.67M Subscribers • Imitation Preschool Entertainment & Good Habits Learning Hub</p>
+        <p>MP • 3.67M Subscribers • Preschool Entertainment & Good Habits Learning Hub</p>
         <p className="mt-1 text-[11px] text-slate-600">
           Features interactive episode player, good habit minigames, Google Calendar routine sync, and the magical sweet machine.
         </p>

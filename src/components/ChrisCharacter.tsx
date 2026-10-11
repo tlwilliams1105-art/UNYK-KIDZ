@@ -24,7 +24,7 @@ export const MPCharacter: React.FC<CharacterProps> = ({
   const isAvatar = size === 'avatar';
 
   return (
-    <div className={`relative inline-block select-none ${sizeMap[size]} ${className}`}>
+    <div className={`relative inline-block select-none group cursor-pointer ${sizeMap[size]} ${className}`}>
       <svg
         viewBox="0 0 200 200"
         className="w-full h-full drop-shadow-md"
@@ -32,6 +32,20 @@ export const MPCharacter: React.FC<CharacterProps> = ({
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
+          {/* Subtle neon glow filter for responsive hover interaction */}
+          <filter id="mpNeonGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3.5" result="glowBlur" />
+            <feColorMatrix
+              type="matrix"
+              values="1 0 0 0 1   0 0.8 0 0 0.8   0 0 0.2 0 0.2  0 0 0 1 0"
+              result="glowColor"
+            />
+            <feMerge>
+              <feMergeNode in="glowColor" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
           {/* Warm, glowing rich brown skin gradients */}
           <radialGradient id="mpSkinGrad" cx="50%" cy="40%" r="55%">
             <stop offset="0%" stopColor="#a36339" />
@@ -112,12 +126,13 @@ export const MPCharacter: React.FC<CharacterProps> = ({
         <ellipse cx="150" cy="98" rx="10" ry="14" fill="#874a23" stroke="#5c2e10" strokeWidth="1.5" />
         <ellipse cx="150" cy="98" rx="5" ry="7" fill="#693414" />
 
-        {/* --- Head Base (Brown Skin) --- */}
+        {/* --- Head Base (Brown Skin) with subtle neon glow on hover --- */}
         <path
           d="M 52 90 C 52 50, 72 35, 100 35 C 128 35, 148 50, 148 90 C 148 128, 128 142, 100 142 C 72 142, 52 128, 52 90 Z"
           fill="url(#mpSkinGrad)"
           stroke="#54280d"
           strokeWidth="2"
+          className="transition-all duration-300 group-hover:filter group-hover:drop-shadow-[0_0_10px_rgba(255,214,0,0.85)] group-hover:stroke-yellow-400 group-hover:stroke-[2.5]"
         />
 
         {/* Rosy/Warm Cheeks with healthy toddler glow */}

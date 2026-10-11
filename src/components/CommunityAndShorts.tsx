@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChrisCharacter } from './ChrisCharacter';
+import { MPCharacter } from './ChrisCharacter';
 import { sound } from '../utils/audio';
 import { ThumbsUp, MessageSquare, Check, Trophy, Play } from 'lucide-react';
 
@@ -40,7 +40,7 @@ export const CommunityAndShorts: React.FC = () => {
             Community & Shorts Channel Hub
           </h2>
           <p className="text-xs text-slate-300">
-            Connect with 3.67M MP kids show fans around the world!
+            Connect with 3.67M MP fans around the world!
           </p>
         </div>
       </div>
@@ -65,7 +65,7 @@ export const CommunityAndShorts: React.FC = () => {
               </div>
 
               <div className="flex justify-center my-auto">
-                <ChrisCharacter expression="excited" size="md" className="scale-110" />
+                <MPCharacter expression="excited" size="md" className="scale-110" />
               </div>
 
               <div>
@@ -89,11 +89,11 @@ export const CommunityAndShorts: React.FC = () => {
         <div className="bg-neutral-900 border border-white/10 rounded-3xl p-5 shadow-xl">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full overflow-hidden bg-yellow-400 border border-yellow-200">
-              <ChrisCharacter expression="happy" size="avatar" className="scale-125 translate-y-1" />
+              <MPCharacter expression="happy" size="avatar" className="scale-125 translate-y-1" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 font-bold text-sm">
-                <span>MP kids show</span>
+                <span>MP</span>
                 <span className="bg-slate-500 text-white rounded-full p-0.5">
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                 </span>
@@ -162,11 +162,11 @@ export const CommunityAndShorts: React.FC = () => {
         <div className="bg-neutral-900 border border-white/10 rounded-3xl p-5 shadow-xl">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full overflow-hidden bg-yellow-400 border border-yellow-200">
-              <ChrisCharacter expression="excited" size="avatar" className="scale-125 translate-y-1" />
+              <MPCharacter expression="excited" size="avatar" className="scale-125 translate-y-1" />
             </div>
             <div>
               <div className="flex items-center gap-1.5 font-bold text-sm">
-                <span>MP kids show</span>
+                <span>MP</span>
                 <span className="bg-slate-500 text-white rounded-full p-0.5">
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                 </span>
@@ -180,7 +180,7 @@ export const CommunityAndShorts: React.FC = () => {
           </p>
 
           <div className="p-6 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-around border-2 border-yellow-300">
-            <ChrisCharacter expression="cheering" size="lg" />
+            <MPCharacter expression="cheering" size="lg" />
             <div className="text-center">
               <div className="text-4xl">🏆</div>
               <div className="text-2xl font-black text-yellow-300 mt-1">3.67M CLUB</div>
