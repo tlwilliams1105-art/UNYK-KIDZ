@@ -1,0 +1,6 @@
+{
+  "name": "MP Kids Show - Interactive YouTube Channel",
+  "description": "Watch MP learn good habits with the magical sweet machine! An interactive YouTube-style kids show experience with animated episodes, good habit mini-games, community comments, and sweet machine arcade.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
