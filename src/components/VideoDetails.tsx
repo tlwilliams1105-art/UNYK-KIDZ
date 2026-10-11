@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   ChevronDown,
   ChevronUp,
+  Award,
 } from 'lucide-react';
 
 interface VideoDetailsProps {
@@ -23,6 +24,7 @@ interface VideoDetailsProps {
   onToggleSubscribe: () => void;
   onOpenShareModal: () => void;
   onOpenColoringModal: () => void;
+  onOpenCertificates?: () => void;
 }
 
 export const VideoDetails: React.FC<VideoDetailsProps> = ({
@@ -32,6 +34,7 @@ export const VideoDetails: React.FC<VideoDetailsProps> = ({
   onToggleSubscribe,
   onOpenShareModal,
   onOpenColoringModal,
+  onOpenCertificates,
 }) => {
   const [likes, setLikes] = useState(episode.likes);
   const [hasLiked, setHasLiked] = useState(false);
@@ -178,6 +181,21 @@ export const VideoDetails: React.FC<VideoDetailsProps> = ({
             <Download className="w-4 h-4" />
             <span className="hidden sm:inline">Activity Sheet</span>
           </button>
+
+          {/* Award Certificate Button */}
+          {onOpenCertificates && (
+            <button
+              onClick={() => {
+                sound.playSfx('fanfare');
+                onOpenCertificates();
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500/30 to-yellow-500/30 hover:from-amber-500/40 hover:to-yellow-500/40 text-yellow-300 rounded-full text-sm font-bold border border-yellow-400/40 transition-colors cursor-pointer shadow-sm"
+              title="Award official certificate of accomplishment"
+            >
+              <Award className="w-4 h-4 text-yellow-400" />
+              <span>Award Certificate 🏆</span>
+            </button>
+          )}
 
           {/* Save to Playlist */}
           <button

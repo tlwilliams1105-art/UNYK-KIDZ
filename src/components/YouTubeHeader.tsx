@@ -6,8 +6,8 @@ interface YouTubeHeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   unreadCount?: number;
-  activeTab: 'watch' | 'create' | 'arcade' | 'community' | 'stickers' | 'calendar';
-  onTabChange: (tab: 'watch' | 'create' | 'arcade' | 'community' | 'stickers' | 'calendar') => void;
+  activeTab: 'watch' | 'create' | 'arcade' | 'community' | 'stickers' | 'calendar' | 'certificates' | 'wardrobe';
+  onTabChange: (tab: 'watch' | 'create' | 'arcade' | 'community' | 'stickers' | 'calendar' | 'certificates' | 'wardrobe') => void;
   kidSafeMode: boolean;
   onToggleKidSafe: () => void;
 }
@@ -156,6 +156,17 @@ export const YouTubeHeader: React.FC<YouTubeHeaderProps> = ({
           <button
             onClick={() => {
               sound.playSfx('pop');
+              onTabChange('wardrobe');
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'wardrobe' ? 'bg-pink-500 text-white shadow' : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            👕 Wardrobe
+          </button>
+          <button
+            onClick={() => {
+              sound.playSfx('pop');
               onTabChange('stickers');
             }}
             className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
@@ -163,6 +174,17 @@ export const YouTubeHeader: React.FC<YouTubeHeaderProps> = ({
             }`}
           >
             ⭐ Stickers
+          </button>
+          <button
+            onClick={() => {
+              sound.playSfx('pop');
+              onTabChange('certificates');
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'certificates' ? 'bg-amber-400 text-amber-950 shadow' : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            🏆 Certificates
           </button>
         </div>
 

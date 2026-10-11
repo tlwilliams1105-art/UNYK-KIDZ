@@ -27,9 +27,22 @@ import {
   Star,
   Zap,
   Check,
+  Crown,
+  BookOpen,
 } from 'lucide-react';
+import { SuperHabitCelebrationModal } from './SuperHabitCelebrationModal';
 
-export const CalendarHabitPlanner: React.FC = () => {
+interface CalendarHabitPlannerProps {
+  onEarnSticker?: (stickerId: string) => void;
+  onViewStickerAlbum?: () => void;
+  onOpenCertificates?: (presetId?: string) => void;
+}
+
+export const CalendarHabitPlanner: React.FC<CalendarHabitPlannerProps> = ({
+  onEarnSticker,
+  onViewStickerAlbum,
+  onOpenCertificates,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -42,9 +55,9 @@ export const CalendarHabitPlanner: React.FC = () => {
   const [streakCount, setStreakCount] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('mp_habit_streak');
-      return saved ? parseInt(saved, 10) : 5;
+      return saved ? parseInt(saved, 10) : 6;
     } catch {
-      return 5;
+      return 6;
     }
   });
 
@@ -71,6 +84,52 @@ export const CalendarHabitPlanner: React.FC = () => {
     }
   });
 
+  // Track consecutive completed days for each individual habit (e.g. 6 days done, next completes 7)
+  const [habitStreaks, setHabitStreaks] = useState<{ [habitId: string]: number }>(() => {
+    try {
+      const saved = localStorage.getItem('mp_habit_streaks_map');
+      return saved
+        ? JSON.parse(saved)
+        : {
+            teeth: 6,
+            veggies: 6,
+            cleanup: 6,
+            show: 6,
+            bedtime: 6,
+          };
+    } catch {
+      return {
+        teeth: 6,
+        veggies: 6,
+        cleanup: 6,
+        show: 6,
+        bedtime: 6,
+      };
+    }
+  });
+
+  // 7-Day progress strip completion state (Mon through Sun)
+  const [weekDayStatus, setWeekDayStatus] = useState<boolean[]>(() => {
+    try {
+      const saved = localStorage.getItem('mp_weekday_status');
+      return saved ? JSON.parse(saved) : [true, true, true, true, true, true, false];
+    } catch {
+      return [true, true, true, true, true, true, false];
+    }
+  });
+
+  // Exclusive 'Super Habit' Sticker unlocked state
+  const [isSuperHabitUnlocked, setIsSuperHabitUnlocked] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('mp_super_habit_unlocked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  // Celebration Modals State
+  const [showSuperHabitCelebration, setShowSuperHabitCelebration] = useState(false);
+  const [celebratedHabitTitle, setCelebratedHabitTitle] = useState<string>('Daily Habits');
   const [showStreakCelebration, setShowStreakCelebration] = useState(false);
   const [streakRewardText, setStreakRewardText] = useState<string>('');
 
@@ -139,20 +198,70 @@ export const CalendarHabitPlanner: React.FC = () => {
   const milestones = [
     { days: 3, name: 'Bronze Habit Star', icon: '⭐', reward: '+3 Sweet Machine Coins', unlocked: streakCount >= 3 },
     { days: 5, name: 'Silver Habit Hero', icon: '🔥', reward: 'Habit Champion Badge', unlocked: streakCount >= 5 },
-    { days: 7, name: 'Golden Week Crown', icon: '👑', reward: 'Golden Token & Sticker', unlocked: streakCount >= 7 },
+    { days: 7, name: 'Super Habit Hero', icon: '⚡👑', reward: "Exclusive 'Super Habit' Sticker", unlocked: streakCount >= 7 || isSuperHabitUnlocked },
     { days: 14, name: 'Diamond Legend Trophy', icon: '💎', reward: "MP's Best Friend Award", unlocked: streakCount >= 14 },
   ];
 
   // 7-day strip (Mon through Sun)
   const weekDays = [
-    { label: 'Mon', completed: true, dayNum: 1 },
-    { label: 'Tue', completed: true, dayNum: 2 },
-    { label: 'Wed', completed: true, dayNum: 3 },
-    { label: 'Thu', completed: true, dayNum: 4 },
-    { label: 'Fri', completed: true, dayNum: 5 },
-    { label: 'Today', completed: isAllTodayCompleted, dayNum: 6, isToday: true },
-    { label: 'Sun', completed: false, dayNum: 7 },
+    { label: 'Mon', completed: weekDayStatus[0], dayNum: 1 },
+    { label: 'Tue', completed: weekDayStatus[1], dayNum: 2 },
+    { label: 'Wed', completed: weekDayStatus[2], dayNum: 3 },
+    { label: 'Thu', completed: weekDayStatus[3], dayNum: 4 },
+    { label: 'Fri', completed: weekDayStatus[4], dayNum: 5 },
+    { label: 'Today', completed: weekDayStatus[5] || isAllTodayCompleted, dayNum: 6, isToday: true },
+    { label: 'Sun', completed: weekDayStatus[6], dayNum: 7 },
   ];
+
+  // Trigger celebration and unlock the exclusive Super Habit sticker
+  const triggerSuperHabitUnlock = (habitName = 'Daily Good Habits') => {
+    setIsSuperHabitUnlocked(true);
+    try {
+      localStorage.setItem('mp_super_habit_unlocked', 'true');
+    } catch {
+      // Ignore
+    }
+
+    // Mark all 7 days complete on progress strip
+    const allSeven = [true, true, true, true, true, true, true];
+    setWeekDayStatus(allSeven);
+    try {
+      localStorage.setItem('mp_weekday_status', JSON.stringify(allSeven));
+    } catch {
+      // Ignore
+    }
+
+    if (streakCount < 7) {
+      setStreakCount(7);
+      try {
+        localStorage.setItem('mp_habit_streak', '7');
+      } catch {
+        // Ignore
+      }
+    }
+
+    // Persist and inform parent sticker collection
+    onEarnSticker?.('stk-super-habit');
+    setCelebratedHabitTitle(habitName);
+    setShowSuperHabitCelebration(true);
+  };
+
+  const handleToggleWeekDay = (index: number) => {
+    sound.playSfx('pop');
+    const updated = [...weekDayStatus];
+    updated[index] = !updated[index];
+    setWeekDayStatus(updated);
+    try {
+      localStorage.setItem('mp_weekday_status', JSON.stringify(updated));
+    } catch {
+      // Ignore
+    }
+
+    // If all 7 days of the habit cycle are completed, trigger celebration!
+    if (updated.every(Boolean)) {
+      triggerSuperHabitUnlock('7-Day Habit Calendar Challenge');
+    }
+  };
 
   // Handle toggling an individual habit
   const handleToggleHabit = (habitId: string) => {
@@ -163,8 +272,22 @@ export const CalendarHabitPlanner: React.FC = () => {
       sound.playSfx('sparkle');
     }
 
+    const wasChecked = !!todayHabits[habitId];
+    const willBeChecked = !wasChecked;
+
+    // Track consecutive streak for this specific habit
+    const currentHabitStreak = habitStreaks[habitId] ?? 6;
+    const nextHabitStreak = willBeChecked ? currentHabitStreak + 1 : Math.max(0, currentHabitStreak - 1);
+    const updatedHabitStreaks = { ...habitStreaks, [habitId]: nextHabitStreak };
+    setHabitStreaks(updatedHabitStreaks);
+    try {
+      localStorage.setItem('mp_habit_streaks_map', JSON.stringify(updatedHabitStreaks));
+    } catch {
+      // ignore
+    }
+
     setTodayHabits((prev) => {
-      const next = { ...prev, [habitId]: !prev[habitId] };
+      const next = { ...prev, [habitId]: willBeChecked };
       try {
         localStorage.setItem('mp_today_habits', JSON.stringify(next));
       } catch {
@@ -173,8 +296,16 @@ export const CalendarHabitPlanner: React.FC = () => {
 
       // If all habits are completed with this check
       const nextCompletedCount = Object.values(next).filter(Boolean).length;
-      if (nextCompletedCount === habitItems.length && !prev[habitId]) {
-        triggerStreakBonus(streakCount + 1);
+      if (nextCompletedCount === habitItems.length && willBeChecked) {
+        const nextStreak = streakCount + 1;
+        if (nextStreak >= 7) {
+          triggerSuperHabitUnlock(target?.label || 'All Daily Habits');
+        } else {
+          triggerStreakBonus(nextStreak);
+        }
+      } else if (willBeChecked && nextHabitStreak >= 7) {
+        // Individual habit completed 7 consecutive days!
+        triggerSuperHabitUnlock(target?.label || 'Good Habit');
       }
       return next;
     });
@@ -182,6 +313,10 @@ export const CalendarHabitPlanner: React.FC = () => {
 
   // Trigger streak increment & celebration fanfare
   const triggerStreakBonus = (newStreak: number) => {
+    if (newStreak >= 7) {
+      triggerSuperHabitUnlock('Daily Habits');
+      return;
+    }
     sound.playSfx('fanfare');
     sound.playSfx('cheer');
     setStreakCount(newStreak);
@@ -206,7 +341,12 @@ export const CalendarHabitPlanner: React.FC = () => {
     } catch {
       // Ignore
     }
-    triggerStreakBonus(streakCount + 1);
+    const nextStreak = streakCount + 1;
+    if (nextStreak >= 7) {
+      triggerSuperHabitUnlock('All Daily Habits');
+    } else {
+      triggerStreakBonus(nextStreak);
+    }
   };
 
   // Initialize Auth on mount
@@ -434,23 +574,26 @@ export const CalendarHabitPlanner: React.FC = () => {
         <div className="relative z-10 pt-5 pb-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-black uppercase tracking-wider text-yellow-200">
-              7-Day Consecutive Progress:
+              7-Day Consecutive Progress (Tap day to toggle):
             </span>
             <span className="text-xs text-white/90 font-bold">
-              {completedCount} of {habitItems.length} Habits Finished Today
+              {weekDays.filter((d) => d.completed).length} of 7 Days Completed
             </span>
           </div>
 
           <div className="grid grid-cols-7 gap-2 sm:gap-3">
             {weekDays.map((d, idx) => (
-              <div
+              <button
                 key={idx}
-                className={`flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl transition-all ${
+                type="button"
+                onClick={() => handleToggleWeekDay(idx)}
+                title={`Day ${d.dayNum} (${d.label}): Click to toggle completion`}
+                className={`flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-2xl transition-all cursor-pointer ${
                   d.completed
-                    ? 'bg-yellow-400 text-sky-950 font-black shadow-lg border-2 border-white scale-102'
+                    ? 'bg-yellow-400 text-sky-950 font-black shadow-lg border-2 border-white scale-102 hover:bg-yellow-300'
                     : d.isToday
-                    ? 'bg-black/40 border-2 border-yellow-300 text-white animate-pulse'
-                    : 'bg-black/25 text-white/60 border border-white/10'
+                    ? 'bg-black/40 border-2 border-yellow-300 text-white animate-pulse hover:bg-black/60'
+                    : 'bg-black/25 text-white/60 border border-white/10 hover:border-yellow-400/40 hover:bg-black/40'
                 }`}
               >
                 <span className="text-[10px] sm:text-xs font-bold uppercase">{d.label}</span>
@@ -458,9 +601,9 @@ export const CalendarHabitPlanner: React.FC = () => {
                   {d.completed ? '🔥' : d.isToday ? '⭐' : '⭕'}
                 </div>
                 <span className="text-[9px] font-semibold opacity-90">
-                  {d.completed ? 'Done' : d.isToday ? 'Today' : 'Upcoming'}
+                  {d.completed ? 'Done ✅' : d.isToday ? 'Today' : 'Upcoming'}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -483,6 +626,7 @@ export const CalendarHabitPlanner: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5">
             {habitItems.map((habit) => {
               const isChecked = !!todayHabits[habit.id];
+              const habitStreak = habitStreaks[habit.id] ?? 6;
               return (
                 <button
                   key={habit.id}
@@ -495,7 +639,12 @@ export const CalendarHabitPlanner: React.FC = () => {
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-xl shrink-0">{habit.icon}</span>
-                    <span className="text-xs font-bold truncate">{habit.label}</span>
+                    <div className="text-left truncate">
+                      <div className="text-xs font-bold truncate">{habit.label}</div>
+                      <div className="text-[9px] text-yellow-300 font-semibold">
+                        {habitStreak >= 7 ? '⭐ 7d Streak!' : `${habitStreak}/7 days`}
+                      </div>
+                    </div>
                   </div>
                   <div
                     className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 border ${
@@ -539,6 +688,116 @@ export const CalendarHabitPlanner: React.FC = () => {
         </div>
       </div>
 
+      {/* ========================================================================= */}
+      {/* --- EXCLUSIVE 'SUPER HABIT' STICKER UNLOCK SHOWCASE --- */}
+      {/* ========================================================================= */}
+      <div
+        className={`mb-8 relative overflow-hidden rounded-3xl p-6 sm:p-7 border-4 transition-all shadow-2xl ${
+          isSuperHabitUnlocked
+            ? 'bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-sky-500/25 border-yellow-400 shadow-[0_0_40px_rgba(251,191,36,0.35)]'
+            : 'bg-neutral-900/90 border-yellow-400/40 shadow-xl'
+        }`}
+      >
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+          {/* Left: Sticker Trophy Graphic & Lore */}
+          <div className="flex items-center gap-4 text-center sm:text-left">
+            <div className="relative shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-amber-400 to-yellow-300 p-1 border-3 border-white shadow-xl flex items-center justify-center transform hover:scale-105 transition-transform">
+              <div className="w-full h-full rounded-2xl bg-sky-950 flex flex-col items-center justify-center p-1 border border-yellow-300">
+                <span className="text-3xl sm:text-4xl animate-bounce">⚡👑</span>
+                <span className="text-[8px] font-black uppercase tracking-wider text-yellow-300 mt-0.5">
+                  SUPER HABIT
+                </span>
+              </div>
+              {isSuperHabitUnlocked && (
+                <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-1 border border-white shadow">
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
+                <span className="text-[10px] uppercase font-black px-2.5 py-0.5 rounded-full bg-red-600 text-white tracking-wider">
+                  Exclusive Reward
+                </span>
+                <span
+                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                    isSuperHabitUnlocked
+                      ? 'bg-yellow-400 text-sky-950 border-white font-extrabold'
+                      : 'bg-neutral-800 text-slate-300 border-white/10'
+                  }`}
+                >
+                  {isSuperHabitUnlocked ? 'UNLOCKED! ✨' : '7 Consecutive Days Goal'}
+                </span>
+              </div>
+
+              <h4 className="text-xl sm:text-2xl font-black text-white font-['Fredoka']">
+                Exclusive ‘Super Habit’ Sticker
+              </h4>
+              <p className="text-xs text-slate-300 max-w-md mt-1 leading-relaxed">
+                {isSuperHabitUnlocked
+                  ? 'Congratulations! You completed 7 consecutive days of consistent habits and unlocked this exclusive sticker!'
+                  : 'Complete 7 consecutive days of any good habit to trigger the celebratory fireworks and unlock this legendary sticker!'}
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex flex-wrap items-center justify-center gap-3 shrink-0">
+            {isSuperHabitUnlocked ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playSfx('sparkle');
+                    setShowSuperHabitCelebration(true);
+                  }}
+                  className="px-5 py-2.5 rounded-2xl bg-yellow-400 hover:bg-yellow-300 text-sky-950 font-black text-xs sm:text-sm shadow-lg border-2 border-white flex items-center gap-2 transform active:scale-95 transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 fill-sky-950" />
+                  <span>Replay Celebration 🎉</span>
+                </button>
+                {onOpenCertificates && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.playSfx('fanfare');
+                      onOpenCertificates('super-habit-7');
+                    }}
+                    className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-sky-950 font-black text-xs sm:text-sm border-2 border-white flex items-center gap-1.5 shadow-md cursor-pointer transition-transform active:scale-95"
+                  >
+                    <Award className="w-4 h-4 text-amber-900" />
+                    <span>Print 7-Day Certificate 📜</span>
+                  </button>
+                )}
+                {onViewStickerAlbum && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.playSfx('pop');
+                      onViewStickerAlbum();
+                    }}
+                    className="px-4 py-2.5 rounded-2xl bg-neutral-800 hover:bg-neutral-700 text-slate-200 font-bold text-xs border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4 text-purple-400" />
+                    <span>View in Album 📖</span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => triggerSuperHabitUnlock('Daily Good Habits')}
+                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-yellow-400 via-amber-300 to-orange-400 hover:from-yellow-300 hover:to-orange-300 text-sky-950 font-black text-xs sm:text-sm shadow-xl border-2 border-white flex items-center gap-2 transform active:scale-95 transition-all cursor-pointer animate-pulse"
+              >
+                <Crown className="w-4 h-4 fill-sky-950" />
+                <span>Trigger 7-Day Super Habit Celebration ⭐</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Streak Celebration Popup */}
       {showStreakCelebration && (
         <div className="mb-6 p-4 bg-gradient-to-r from-yellow-400 via-amber-300 to-orange-400 text-sky-950 rounded-2xl shadow-2xl border-4 border-white flex items-center justify-between animate-in zoom-in duration-300">
@@ -559,6 +818,17 @@ export const CalendarHabitPlanner: React.FC = () => {
           </button>
         </div>
       )}
+
+      {/* Super Habit Celebratory Fullscreen Modal Animation */}
+      <SuperHabitCelebrationModal
+        isOpen={showSuperHabitCelebration}
+        onClose={() => setShowSuperHabitCelebration(false)}
+        onViewStickerAlbum={onViewStickerAlbum}
+        onOpenCertificates={() => {
+          if (onOpenCertificates) onOpenCertificates('super-habit-7');
+        }}
+        habitTitle={celebratedHabitTitle}
+      />
 
       {/* --- RECHARTS-BASED WEEKLY HABIT COMPLETION CONSISTENCY BAR CHART --- */}
       <HabitConsistencyChart todayHabits={todayHabits} streakCount={streakCount} />

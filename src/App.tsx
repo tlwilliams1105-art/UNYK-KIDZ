@@ -12,17 +12,49 @@ import { CommunityAndShorts } from './components/CommunityAndShorts';
 import { ShareModal } from './components/ShareModal';
 import { ColoringModal } from './components/ColoringModal';
 import { MorningAffirmation } from './components/MorningAffirmation';
+import { AccomplishmentCertificates } from './components/AccomplishmentCertificates';
+import { WardrobeStudio } from './components/WardrobeStudio';
 import { sound } from './utils/audio';
-import { Sparkles, Heart, Bell } from 'lucide-react';
+import { Sparkles, Heart, Bell, Award, Shirt } from 'lucide-react';
 
 export default function App() {
   const [currentEpisode, setCurrentEpisode] = useState<Episode>(EPISODES[0]);
-  const [activeTab, setActiveTab] = useState<'watch' | 'create' | 'arcade' | 'community' | 'stickers' | 'calendar'>('watch');
+  const [activeTab, setActiveTab] = useState<'watch' | 'create' | 'arcade' | 'community' | 'stickers' | 'calendar' | 'certificates' | 'wardrobe'>('watch');
+  const [currentStreak, setCurrentStreak] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('mp_habit_streak');
+      return saved ? parseInt(saved, 10) : 6;
+    } catch {
+      return 6;
+    }
+  });
+  const [selectedCertPreset, setSelectedCertPreset] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('kid shows on youtube');
   const [subscriberCount, setSubscriberCount] = useState(3674890);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [kidSafeMode, setKidSafeMode] = useState(false);
-  const [stickers, setStickers] = useState<CollectibleSticker[]>(INITIAL_STICKERS);
+  const [stickers, setStickers] = useState<CollectibleSticker[]>(() => {
+    try {
+      const saved = localStorage.getItem('mp_stickers');
+      const isSuperUnlocked = localStorage.getItem('mp_super_habit_unlocked') === 'true';
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return INITIAL_STICKERS.map((stk) => {
+          const match = parsed.find((p: CollectibleSticker) => p.id === stk.id);
+          const unlocked = stk.id === 'stk-super-habit' ? (isSuperUnlocked || match?.unlocked || stk.unlocked) : (match?.unlocked ?? stk.unlocked);
+          return { ...stk, unlocked };
+        });
+      }
+      if (isSuperUnlocked) {
+        return INITIAL_STICKERS.map((stk) =>
+          stk.id === 'stk-super-habit' ? { ...stk, unlocked: true } : stk
+        );
+      }
+    } catch {
+      // ignore
+    }
+    return INITIAL_STICKERS;
+  });
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isColoringModalOpen, setIsColoringModalOpen] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -51,9 +83,18 @@ export default function App() {
   };
 
   const handleEarnSticker = (stickerId: string) => {
-    setStickers(prev =>
-      prev.map(s => (s.id === stickerId ? { ...s, unlocked: true } : s))
-    );
+    setStickers((prev) => {
+      const next = prev.map((s) => (s.id === stickerId ? { ...s, unlocked: true } : s));
+      try {
+        localStorage.setItem('mp_stickers', JSON.stringify(next));
+        if (stickerId === 'stk-super-habit') {
+          localStorage.setItem('mp_super_habit_unlocked', 'true');
+        }
+      } catch {
+        // ignore
+      }
+      return next;
+    });
   };
 
   const handleUnlockSticker = (id: string) => {
@@ -68,8 +109,8 @@ export default function App() {
       views: '1 view • Premiere',
       viewCountRaw: 1,
       uploadDate: 'Just now',
-      duration: '08:30',
-      durationSeconds: 510,
+      duration: '00:45',
+      durationSeconds: 45,
       likes: 1,
       category: 'Good Habits',
       description,
@@ -90,9 +131,9 @@ export default function App() {
         },
         {
           id: 'cust-2',
-          title: `02:00 - Good Habit Challenge: ${habit}`,
-          timestamp: '02:00',
-          seconds: 120,
+          title: `0:12 - Good Habit Challenge: ${habit}`,
+          timestamp: '0:12',
+          seconds: 12,
           description: 'Practice the good habit with MP!',
           narrativeText: `Time to practice ${habit}! Remember: good habits make you strong and happy!`,
           interactiveStep: {
@@ -165,6 +206,11 @@ export default function App() {
                 onToggleSubscribe={handleToggleSubscribe}
                 onOpenShareModal={() => setIsShareModalOpen(true)}
                 onOpenColoringModal={() => setIsColoringModalOpen(true)}
+                onOpenCertificates={() => {
+                  sound.playSfx('fanfare');
+                  setSelectedCertPreset(undefined);
+                  setActiveTab('certificates');
+                }}
               />
 
               {/* Comments Section (Hidden if KidSafeMode for distraction-free watching) */}
@@ -195,6 +241,30 @@ export default function App() {
                       </p>
                     </div>
                     <span className="text-4xl animate-bounce">🍭</span>
+                  </div>
+                </div>
+
+                {/* MP Dress-Up Wardrobe Quick Widget */}
+                <div
+                  onClick={() => {
+                    sound.playSfx('pop');
+                    setActiveTab('wardrobe');
+                  }}
+                  className="p-4 bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 text-white rounded-2xl shadow-lg border border-pink-300/40 cursor-pointer hover:scale-102 transition-transform select-none"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">
+                        Streak Wardrobe
+                      </span>
+                      <h4 className="font-black text-base mt-1 font-['Fredoka']">
+                        Customize MP's Outfits! 👕
+                      </h4>
+                      <p className="text-xs font-semibold opacity-90">
+                        {currentStreak}-day streak unlocked new colorful polos & gear!
+                      </p>
+                    </div>
+                    <span className="text-4xl animate-pulse">👑</span>
                   </div>
                 </div>
 
@@ -249,7 +319,14 @@ export default function App() {
 
         {/* Tab 4: GOOGLE CALENDAR HABIT PLANNER */}
         {activeTab === 'calendar' && (
-          <CalendarHabitPlanner />
+          <CalendarHabitPlanner
+            onEarnSticker={handleEarnSticker}
+            onViewStickerAlbum={() => setActiveTab('stickers')}
+            onOpenCertificates={(presetId?: string) => {
+              setSelectedCertPreset(presetId);
+              setActiveTab('certificates');
+            }}
+          />
         )}
 
         {/* Tab 5: STICKERS ALBUM */}
@@ -268,29 +345,91 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {stickers.map((stk) => (
-                <div
-                  key={stk.id}
-                  className={`p-4 rounded-3xl border text-center transition-all ${
-                    stk.unlocked
-                      ? 'bg-neutral-800/90 border-yellow-400/60 shadow-lg'
-                      : 'bg-neutral-900/40 border-white/5 opacity-40'
-                  }`}
-                >
-                  <div className="text-5xl mb-2">{stk.unlocked ? stk.icon : '🔒'}</div>
-                  <div className="font-bold text-sm text-white">{stk.unlocked ? stk.name : 'Secret Sticker'}</div>
-                  <div className="text-[10px] text-yellow-300 font-semibold mb-2">{stk.category}</div>
-                  <p className="text-[11px] text-slate-400 leading-tight">
-                    {stk.unlocked ? stk.habitFact : 'Unlocked by completing challenges in episodes!'}
-                  </p>
-                </div>
-              ))}
+              {stickers.map((stk) => {
+                const isSuper = stk.id === 'stk-super-habit';
+                return (
+                  <div
+                    key={stk.id}
+                    className={`relative p-4 rounded-3xl border text-center transition-all flex flex-col justify-between ${
+                      stk.unlocked
+                        ? isSuper
+                          ? 'bg-gradient-to-b from-amber-500/20 via-yellow-400/10 to-sky-500/20 border-2 border-yellow-400 shadow-[0_0_25px_rgba(251,191,36,0.5)] transform hover:scale-102'
+                          : 'bg-neutral-800/90 border-yellow-400/60 shadow-lg'
+                        : isSuper
+                        ? 'bg-neutral-900/60 border-yellow-400/30 opacity-70'
+                        : 'bg-neutral-900/40 border-white/5 opacity-40'
+                    }`}
+                  >
+                    <div>
+                      {isSuper && (
+                        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-red-600 to-amber-500 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-yellow-300 shadow">
+                          7-Day Exclusive
+                        </span>
+                      )}
+                      <div className={`text-5xl mb-2 ${isSuper && stk.unlocked ? 'animate-bounce' : ''}`}>
+                        {stk.unlocked ? stk.icon : '🔒'}
+                      </div>
+                      <div className="font-bold text-sm text-white">
+                        {stk.unlocked ? stk.name : isSuper ? 'Super Habit (Locked)' : 'Secret Sticker'}
+                      </div>
+                      <div className="text-[10px] text-yellow-300 font-semibold mb-2">{stk.category}</div>
+                      <p className="text-[11px] text-slate-400 leading-tight">
+                        {stk.unlocked
+                          ? stk.habitFact
+                          : isSuper
+                          ? 'Complete 7 consecutive days of any habit in the Calendar Planner to unlock!'
+                          : 'Unlocked by completing challenges in episodes!'}
+                      </p>
+                    </div>
+
+                    {stk.unlocked && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sound.playSfx('fanfare');
+                          const presetMap: Record<string, string> = {
+                            'stk-1': 'teeth-hero',
+                            'stk-2': 'veggie-champion',
+                            'stk-3': 'tidy-room',
+                            'stk-4': 'sweet-machine-grad',
+                            'stk-super-habit': 'super-habit-7',
+                            'stk-12': 'kindness-sharing',
+                            'stk-9': 'bedtime-star',
+                          };
+                          setSelectedCertPreset(presetMap[stk.id] || 'super-habit-7');
+                          setActiveTab('certificates');
+                        }}
+                        className="mt-3 w-full py-1.5 px-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-sky-950 font-black text-[11px] rounded-xl flex items-center justify-center gap-1 shadow cursor-pointer transition-transform active:scale-95"
+                      >
+                        <Award className="w-3.5 h-3.5 text-amber-800" />
+                        <span>Award Certificate 📜</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Tab 6: COMMUNITY & SHORTS */}
         {activeTab === 'community' && <CommunityAndShorts />}
+
+        {/* Tab 7: CERTIFICATES FOR ACCOMPLISHMENTS */}
+        {activeTab === 'certificates' && (
+          <AccomplishmentCertificates
+            initialAccomplishmentId={selectedCertPreset}
+            onEarnSticker={handleEarnSticker}
+          />
+        )}
+
+        {/* Tab 8: DRESS-UP WARDROBE STUDIO (UNLOCKED BY HABIT STREAKS) */}
+        {activeTab === 'wardrobe' && (
+          <WardrobeStudio
+            currentStreak={currentStreak}
+            onOpenCalendar={() => setActiveTab('calendar')}
+          />
+        )}
       </main>
 
       {/* Share Modal */}

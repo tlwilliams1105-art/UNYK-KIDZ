@@ -1,10 +1,13 @@
 import React from 'react';
+import { WARDROBE_ITEMS, UserWardrobeState, DEFAULT_WARDROBE_STATE } from '../data/wardrobe';
 
 interface CharacterProps {
   expression?: 'happy' | 'excited' | 'brushing' | 'eating' | 'thinking' | 'cheering';
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'avatar';
   className?: string;
   animate?: boolean;
+  // Optional wardrobe override; if not provided, reads from localStorage or DEFAULT_WARDROBE_STATE
+  wardrobe?: Partial<UserWardrobeState>;
 }
 
 export const MPCharacter: React.FC<CharacterProps> = ({
@@ -12,6 +15,7 @@ export const MPCharacter: React.FC<CharacterProps> = ({
   size = 'lg',
   className = '',
   animate = true,
+  wardrobe,
 }) => {
   const sizeMap = {
     avatar: 'w-10 h-10',
@@ -22,6 +26,31 @@ export const MPCharacter: React.FC<CharacterProps> = ({
   };
 
   const isAvatar = size === 'avatar';
+
+  // Read saved wardrobe state or fallback
+  const activeWardrobe = (() => {
+    try {
+      const saved = localStorage.getItem('mp_wardrobe_state');
+      const parsed = saved ? JSON.parse(saved) : DEFAULT_WARDROBE_STATE;
+      return { ...parsed, ...wardrobe };
+    } catch {
+      return { ...DEFAULT_WARDROBE_STATE, ...wardrobe };
+    }
+  })();
+
+  const outfitItem =
+    WARDROBE_ITEMS.find((item) => item.id === activeWardrobe.selectedOutfitId) ||
+    WARDROBE_ITEMS[0];
+  const hatItem =
+    WARDROBE_ITEMS.find((item) => item.id === activeWardrobe.selectedHatId) ||
+    WARDROBE_ITEMS.find((item) => item.id === 'hat-none')!;
+  const accessoryItem =
+    WARDROBE_ITEMS.find((item) => item.id === activeWardrobe.selectedAccessoryId) ||
+    WARDROBE_ITEMS.find((item) => item.id === 'acc-none')!;
+
+  const { theme } = outfitItem;
+  const hatType = hatItem.theme.hatSvgType || 'none';
+  const accType = accessoryItem.theme.accessorySvgType || 'none';
 
   return (
     <div className={`relative inline-block select-none group cursor-pointer ${sizeMap[size]} ${className}`}>
@@ -64,51 +93,79 @@ export const MPCharacter: React.FC<CharacterProps> = ({
             <stop offset="100%" stopColor="#120a06" />
           </linearGradient>
 
-          {/* Signature bright yellow polo */}
+          {/* Dynamic Outfit Gradient based on unlocked selection */}
           <linearGradient id="mpShirtGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#ffea3b" />
-            <stop offset="70%" stopColor="#fbc02d" />
-            <stop offset="100%" stopColor="#f57f17" />
+            <stop offset="0%" stopColor={theme.shirtGradient[0]} />
+            <stop offset="70%" stopColor={theme.shirtGradient[1]} />
+            <stop offset="100%" stopColor={theme.shirtGradient[2]} />
           </linearGradient>
           <linearGradient id="mpCollarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fff176" />
-            <stop offset="100%" stopColor="#f9a825" />
+            <stop offset="0%" stopColor={theme.collarGradient[0]} />
+            <stop offset="100%" stopColor={theme.collarGradient[1]} />
           </linearGradient>
         </defs>
 
-        {/* --- Shirt Body (Yellow Polo) --- */}
+        {/* --- Superhero Cape (Back layer if equipped) --- */}
+        {accType === 'superhero-cape' && !isAvatar && (
+          <g className="animate-pulse">
+            <path
+              d="M 45 155 C 20 180, 15 200, 30 200 C 50 190, 150 190, 170 200 C 185 200, 180 180, 155 155 Z"
+              fill="#d50000"
+              stroke="#b71c1c"
+              strokeWidth="2"
+            />
+            {/* Sparkles around cape */}
+            <circle cx="25" cy="165" r="2.5" fill="#ffd600" />
+            <circle cx="175" cy="165" r="2.5" fill="#ffd600" />
+          </g>
+        )}
+
+        {/* --- Shirt Body (Customizable Polo / Coat) --- */}
         <path
           d="M 40 185 C 45 155, 65 140, 100 140 C 135 140, 155 155, 160 185 L 165 200 L 35 200 Z"
           fill="url(#mpShirtGrad)"
-          stroke="#d84315"
+          stroke={theme.collarStroke}
           strokeWidth="2.5"
         />
 
         {/* Polo Collar Placket */}
         <path
           d="M 94 145 L 94 185 L 106 185 L 106 145 Z"
-          fill="#fff59d"
-          stroke="#f57f17"
+          fill={theme.placketColor}
+          stroke={theme.collarStroke}
           strokeWidth="1.5"
         />
         {/* Buttons on Polo */}
-        <circle cx="100" cy="155" r="2.5" fill="#e65100" />
-        <circle cx="100" cy="170" r="2.5" fill="#e65100" />
+        <circle cx="100" cy="155" r="2.5" fill={theme.buttonColor} />
+        <circle cx="100" cy="170" r="2.5" fill={theme.buttonColor} />
 
         {/* Left Polo Collar Wing */}
         <polygon
           points="95,142 68,154 85,160 97,147"
           fill="url(#mpCollarGrad)"
-          stroke="#e65100"
+          stroke={theme.collarStroke}
           strokeWidth="2"
         />
         {/* Right Polo Collar Wing */}
         <polygon
           points="105,142 132,154 115,160 103,147"
           fill="url(#mpCollarGrad)"
-          stroke="#e65100"
+          stroke={theme.collarStroke}
           strokeWidth="2"
         />
+
+        {/* --- Gold Medal Ribbon and Medallion (If equipped) --- */}
+        {accType === 'gold-medal' && !isAvatar && (
+          <g>
+            {/* Ribbon */}
+            <path d="M 90 148 L 100 166 L 96 148" fill="#1565c0" stroke="#0d47a1" strokeWidth="1" />
+            <path d="M 110 148 L 100 166 L 104 148" fill="#d32f2f" stroke="#b71c1c" strokeWidth="1" />
+            {/* Shiny Gold Coin Medal */}
+            <circle cx="100" cy="170" r="8" fill="#ffd700" stroke="#ff8f00" strokeWidth="1.5" />
+            <circle cx="100" cy="170" r="6" fill="#ffeb3b" />
+            <text x="100" y="173" fontSize="8" fontWeight="bold" textAnchor="middle" fill="#e65100">1</text>
+          </g>
+        )}
 
         {/* --- Neck --- */}
         <rect
@@ -185,25 +242,45 @@ export const MPCharacter: React.FC<CharacterProps> = ({
           strokeWidth="2.8"
           strokeLinecap="round"
         />
-        {/* Soft nose highlight */}
         <circle cx="100" cy="100" r="2" fill="#c47d4e" opacity="0.6" />
+
+        {/* --- Star Glasses (If equipped) --- */}
+        {accType === 'star-glasses' && (
+          <g>
+            {/* Bridge */}
+            <path d="M 88 90 Q 100 87 112 90" stroke="#ff4081" strokeWidth="3" fill="none" />
+            {/* Left Star Lens */}
+            <path
+              d="M 78 79 L 81 87 L 89 88 L 83 94 L 85 102 L 78 97 L 71 102 L 73 94 L 67 88 L 75 87 Z"
+              fill="#e91e63"
+              stroke="#c2185b"
+              strokeWidth="2"
+              opacity="0.88"
+            />
+            {/* Right Star Lens */}
+            <path
+              d="M 122 79 L 125 87 L 133 88 L 127 94 L 129 102 L 122 97 L 115 102 L 117 94 L 111 88 L 119 87 Z"
+              fill="#e91e63"
+              stroke="#c2185b"
+              strokeWidth="2"
+              opacity="0.88"
+            />
+          </g>
+        )}
 
         {/* --- Mouth & Smile --- */}
         {expression === 'happy' && (
           <g>
-            {/* Open happy smile showing clean white teeth */}
             <path
               d="M 83 112 Q 100 136 117 112 C 117 112, 100 114, 83 112 Z"
               fill="#ad1457"
               stroke="#54280d"
               strokeWidth="2"
             />
-            {/* Bright White Teeth */}
             <path
               d="M 86 113 Q 100 116 114 113 L 113 118 Q 100 120 87 118 Z"
               fill="#ffffff"
             />
-            {/* Cute pink tongue */}
             <path
               d="M 91 127 Q 100 122 109 127 Q 100 136 91 127 Z"
               fill="#ff4081"
@@ -235,7 +312,6 @@ export const MPCharacter: React.FC<CharacterProps> = ({
               strokeWidth="3.5"
               strokeLinecap="round"
             />
-            {/* Toothpaste bubbles */}
             <circle cx="82" cy="114" r="5" fill="#e1f5fe" stroke="#0288d1" strokeWidth="1" />
             <circle cx="118" cy="115" r="4.5" fill="#e1f5fe" stroke="#0288d1" strokeWidth="1" />
             <circle cx="100" cy="122" r="6" fill="#e1f5fe" stroke="#0288d1" strokeWidth="1" />
@@ -292,7 +368,7 @@ export const MPCharacter: React.FC<CharacterProps> = ({
           <circle cx="132" cy="28" r="12" fill="#24150d" stroke="#120a06" strokeWidth="1" />
           <circle cx="146" cy="42" r="11" fill="#1c100a" stroke="#120a06" strokeWidth="1" />
 
-          {/* Soft front curl fringe giving MP his unique sweet hairstyle */}
+          {/* Soft front curl fringe */}
           <circle cx="68" cy="50" r="9" fill="#24150d" />
           <circle cx="84" cy="44" r="9.5" fill="#331c11" />
           <circle cx="102" cy="42" r="10" fill="#3d2215" />
@@ -309,20 +385,86 @@ export const MPCharacter: React.FC<CharacterProps> = ({
           />
         </g>
 
-        {/* Arms / Accessories based on expression */}
+        {/* --- Headwear / Hats (Rendered over hair if equipped) --- */}
+        {hatType === 'star-cap' && (
+          <g>
+            {/* Backwards Cap Dome */}
+            <path
+              d="M 52 50 C 52 20, 148 20, 148 50 C 148 55, 52 55, 52 50 Z"
+              fill="#0288d1"
+              stroke="#01579b"
+              strokeWidth="2.5"
+            />
+            {/* Backwards visor brim */}
+            <path
+              d="M 60 48 Q 100 58 140 48"
+              stroke="#01579b"
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
+            {/* Yellow Star Icon on Cap */}
+            <polygon
+              points="100,26 103,34 112,34 105,39 107,47 100,42 93,47 95,39 88,34 97,34"
+              fill="#ffd600"
+              stroke="#f57f17"
+              strokeWidth="1"
+            />
+          </g>
+        )}
+
+        {hatType === 'firefighter-helmet' && (
+          <g>
+            {/* Red Helmet Dome */}
+            <path
+              d="M 44 48 C 44 14, 156 14, 156 48 L 164 54 C 164 54, 100 48, 36 54 Z"
+              fill="#d32f2f"
+              stroke="#b71c1c"
+              strokeWidth="2.5"
+            />
+            {/* Helmet Ridge Crest */}
+            <path d="M 96 16 L 104 16 L 102 46 L 98 46 Z" fill="#ffeb3b" stroke="#fbc02d" strokeWidth="1" />
+            {/* Gold Chief Shield Badge */}
+            <polygon
+              points="100,32 110,38 108,50 100,54 92,50 90,38"
+              fill="#ffd700"
+              stroke="#ff6f00"
+              strokeWidth="1.2"
+            />
+            <text x="100" y="46" fontSize="7" fontWeight="bold" textAnchor="middle" fill="#b71c1c">MP</text>
+          </g>
+        )}
+
+        {hatType === 'golden-crown' && (
+          <g className="animate-bounce">
+            {/* Gold Jeweled Crown */}
+            <polygon
+              points="58,40 70,16 85,32 100,10 115,32 130,16 142,40"
+              fill="#ffd700"
+              stroke="#ff8f00"
+              strokeWidth="2"
+            />
+            {/* Crown Base Band */}
+            <rect x="58" y="38" width="84" height="8" rx="2" fill="#ffc107" stroke="#ff8f00" strokeWidth="1.5" />
+            {/* Jewels on Crown Peaks */}
+            <circle cx="70" cy="16" r="3.5" fill="#e91e63" />
+            <circle cx="100" cy="10" r="4.5" fill="#00e676" />
+            <circle cx="130" cy="16" r="3.5" fill="#00b0ff" />
+            {/* Sparkle */}
+            <circle cx="100" cy="42" r="2.5" fill="#ffffff" />
+          </g>
+        )}
+
+        {/* Arms / Props based on expression */}
         {expression === 'brushing' && !isAvatar && (
           <g className={animate ? 'animate-bounce' : ''}>
-            {/* Blue Toothbrush */}
             <rect x="120" y="105" width="45" height="8" rx="4" transform="rotate(-25 120 105)" fill="#0288d1" stroke="#01579b" strokeWidth="1.5" />
             <rect x="105" y="100" width="14" height="12" rx="2" transform="rotate(-25 105 100)" fill="#ffffff" stroke="#b0bec5" strokeWidth="1.5" />
-            {/* Sparkle */}
             <path d="M 98 90 L 102 82 L 106 90 L 114 94 L 106 98 L 102 106 L 98 98 L 90 94 Z" fill="#ffd600" />
           </g>
         )}
 
         {expression === 'eating' && !isAvatar && (
           <g>
-            {/* Bright crunchy broccoli */}
             <g transform="translate(130, 95) scale(0.8)">
               <rect x="12" y="24" width="8" height="14" rx="3" fill="#8bc34a" stroke="#558b2f" strokeWidth="1.5" />
               <circle cx="10" cy="18" r="10" fill="#4caf50" stroke="#2e7d32" strokeWidth="1.5" />
@@ -334,7 +476,6 @@ export const MPCharacter: React.FC<CharacterProps> = ({
 
         {expression === 'cheering' && !isAvatar && (
           <g>
-            {/* Raised hands with matching brown skin tone */}
             <ellipse cx="34" cy="140" rx="9" ry="12" fill="#874a23" stroke="#54280d" strokeWidth="1.5" />
             <ellipse cx="166" cy="140" rx="9" ry="12" fill="#874a23" stroke="#54280d" strokeWidth="1.5" />
           </g>
@@ -344,5 +485,4 @@ export const MPCharacter: React.FC<CharacterProps> = ({
   );
 };
 
-// Also export as ChrisCharacter for backwards compatibility across existing components
 export const ChrisCharacter = MPCharacter;

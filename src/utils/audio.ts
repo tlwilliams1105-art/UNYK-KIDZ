@@ -431,6 +431,177 @@ class SoundEngine {
     this.speakBrowser(text);
   }
 
+  /**
+   * Enhanced speak method with word boundary callbacks and completion notification
+   * for synchronizing on-screen prompts with spoken voice.
+   */
+  async speakWithCallbacks(
+    text: string,
+    callbacks?: {
+      onWord?: (charIndex: number, word: string) => void;
+      onEnd?: () => void;
+      onStart?: (estimatedDurationMs: number) => void;
+    }
+  ): Promise<void> {
+    if (this.isVoiceMuted || !text || typeof window === 'undefined') {
+      callbacks?.onEnd?.();
+      return;
+    }
+
+    this.stopSpeech();
+    const cleanText = text.trim();
+    const words = cleanText.split(/\s+/);
+    // Average 140 words per minute ~ 428ms per word, adjusted by speech rate
+    const rateMultiplier = Math.max(0.5, Math.min(2.0, this.voiceConfig.rate || 1));
+    const estimatedDurationMs = Math.round(((words.length * 60) / (140 * rateMultiplier)) * 1000);
+
+    callbacks?.onStart?.(estimatedDurationMs);
+
+    // If Gemini TTS is configured
+    if (this.voiceConfig.engine === 'gemini') {
+      try {
+        const cacheKey = `${this.voiceConfig.geminiVoice}:${cleanText}`;
+        let base64Audio = this.clientAudioCache.get(cacheKey);
+
+        if (!base64Audio) {
+          const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: cleanText,
+              voiceName: this.voiceConfig.geminiVoice,
+              style: 'Warm, cheerful, natural, and expressive animated show narrator and child named MP',
+            }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (typeof data?.audio === 'string') {
+              base64Audio = data.audio;
+              this.clientAudioCache.set(cacheKey, data.audio);
+            }
+          }
+        }
+
+        if (base64Audio) {
+          const audio = new Audio(`data:audio/wav;base64,${base64Audio}`);
+          this.currentAudioElement = audio;
+          audio.playbackRate = Math.min(1.5, Math.max(0.7, this.voiceConfig.rate));
+
+          let wordTimer: number | null = null;
+          if (callbacks?.onWord) {
+            let currentWordIdx = 0;
+            const msPerWord = estimatedDurationMs / Math.max(1, words.length);
+            wordTimer = window.setInterval(() => {
+              if (currentWordIdx < words.length) {
+                callbacks.onWord?.(currentWordIdx, words[currentWordIdx]);
+                currentWordIdx++;
+              } else if (wordTimer) {
+                clearInterval(wordTimer);
+              }
+            }, msPerWord);
+          }
+
+          audio.onended = () => {
+            if (wordTimer) clearInterval(wordTimer);
+            if (this.currentAudioElement === audio) {
+              this.currentAudioElement = null;
+            }
+            callbacks?.onEnd?.();
+          };
+
+          audio.onerror = () => {
+            if (wordTimer) clearInterval(wordTimer);
+            if (this.currentAudioElement === audio) {
+              this.currentAudioElement = null;
+            }
+            this.speakBrowserWithCallbacks(cleanText, words, estimatedDurationMs, callbacks);
+          };
+
+          try {
+            await audio.play();
+            return;
+          } catch (playErr) {
+            console.warn('Audio play failed or was blocked, falling back to speech synthesis:', playErr);
+            if (wordTimer) clearInterval(wordTimer);
+            // Fall through to browser speech fallback
+          }
+        }
+      } catch (err) {
+        console.warn('Gemini TTS unavailable, falling back to natural browser speech:', err);
+      }
+    }
+
+    this.speakBrowserWithCallbacks(cleanText, words, estimatedDurationMs, callbacks);
+  }
+
+  private speakBrowserWithCallbacks(
+    cleanText: string,
+    words: string[],
+    estimatedDurationMs: number,
+    callbacks?: {
+      onWord?: (charIndex: number, word: string) => void;
+      onEnd?: () => void;
+      onStart?: (estimatedDurationMs: number) => void;
+    }
+  ) {
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        const naturalVoice = this.getBestNaturalVoice();
+        if (naturalVoice) utterance.voice = naturalVoice;
+
+        utterance.pitch = Math.min(1.4, Math.max(0.7, this.voiceConfig.pitch));
+        utterance.rate = Math.min(1.4, Math.max(0.7, this.voiceConfig.rate));
+        utterance.volume = 0.95;
+
+        let lastWordIdx = 0;
+        utterance.onboundary = (event) => {
+          if (event.name === 'word' && callbacks?.onWord) {
+            // Find which word index corresponds to charIndex
+            const sub = cleanText.substring(0, event.charIndex);
+            const wordIdx = sub.trim().length === 0 ? 0 : sub.trim().split(/\s+/).length;
+            lastWordIdx = wordIdx;
+            callbacks.onWord(wordIdx, words[wordIdx] || '');
+          }
+        };
+
+        this.activeUtterance = utterance;
+        utterance.onend = () => {
+          if (this.activeUtterance === utterance) {
+            this.activeUtterance = null;
+          }
+          callbacks?.onEnd?.();
+        };
+        utterance.onerror = () => {
+          if (this.activeUtterance === utterance) {
+            this.activeUtterance = null;
+          }
+          callbacks?.onEnd?.();
+        };
+
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        callbacks?.onEnd?.();
+      }
+    } else {
+      // Fallback timer if speech synthesis is not supported
+      setTimeout(() => {
+        callbacks?.onEnd?.();
+      }, estimatedDurationMs);
+    }
+  }
+
+  /**
+   * Estimates reading duration for display meters in seconds.
+   */
+  estimateReadDurationSec(text: string): number {
+    const words = text.trim().split(/\s+/).length;
+    const rate = Math.max(0.6, Math.min(1.5, this.voiceConfig.rate || 1));
+    return Math.max(2, Math.round((words / (2.4 * rate))));
+  }
+
   speakBrowser(text: string) {
     if (this.isVoiceMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {

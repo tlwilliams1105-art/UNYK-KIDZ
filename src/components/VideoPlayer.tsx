@@ -3,6 +3,7 @@ import { Episode, EpisodeChapter } from '../data/episodes';
 import { MPCharacter } from './ChrisCharacter';
 import { SweetMachineGraphic } from './SweetMachineGraphic';
 import { StoryGameOverlay } from './StoryGameOverlay';
+import { QuickRetentionQuiz } from './QuickRetentionQuiz';
 import { VoiceSettingsModal } from './VoiceSettingsModal';
 import { sound } from '../utils/audio';
 import {
@@ -18,7 +19,12 @@ import {
   Music,
   Gamepad2,
   SkipForward,
+  SkipBack,
+  FastForward,
   Sliders,
+  CheckCircle2,
+  Brain,
+  ArrowRight,
 } from 'lucide-react';
 
 interface VideoPlayerProps {
@@ -47,12 +53,35 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [dispensedTreat, setDispensedTreat] = useState<string | null>(null);
   const [showControls, setShowControls] = useState(true);
+  const [showRetentionQuiz, setShowRetentionQuiz] = useState(false);
+  const [isNarrationReading, setIsNarrationReading] = useState(false);
+  const [activeNarrativeWordIdx, setActiveNarrativeWordIdx] = useState(-1);
+  const [narrationFinished, setNarrationFinished] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const controlsTimeoutRef = useRef<number | null>(null);
 
   const duration = episode.durationSeconds;
   const currentChapter = episode.chapters[activeChapterIndex] || episode.chapters[0];
+
+  // Helper to read current chapter dialogue with synchronized callbacks
+  const speakCurrentChapter = (text: string) => {
+    if (!voiceEnabled || !text) return;
+    setIsNarrationReading(true);
+    setNarrationFinished(false);
+    setActiveNarrativeWordIdx(-1);
+
+    sound.speakWithCallbacks(text, {
+      onWord: (idx) => {
+        setActiveNarrativeWordIdx(idx);
+      },
+      onEnd: () => {
+        setIsNarrationReading(false);
+        setActiveNarrativeWordIdx(-1);
+        setNarrationFinished(true);
+      },
+    });
+  };
 
   // Habits tracked for Sweet Machine
   const habitsStatus = {
@@ -71,6 +100,9 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           if (next >= duration) {
             setIsPlaying(false);
             sound.playSfx('cheer');
+            sound.playSfx('fanfare');
+            // Trigger quick retention quiz right after episode finishes
+            setShowRetentionQuiz(true);
             return duration;
           }
           return next;
@@ -80,8 +112,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return () => clearInterval(interval);
   }, [isPlaying, activeStep, playbackSpeed, duration]);
 
-  // Determine current chapter & trigger interactive steps
+  // Determine current chapter & trigger interactive steps cleanly without overlap
   useEffect(() => {
+    // If a challenge is currently active, do NOT evaluate chapter jumps or trigger another challenge!
+    if (activeStep) return;
+
     const chapIdx = episode.chapters.findIndex((c, i) => {
       const nextChap = episode.chapters[i + 1];
       if (nextChap) {
@@ -94,18 +129,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setActiveChapterIndex(chapIdx);
       const newChap = episode.chapters[chapIdx];
 
-      // Voice read narrative
+      // Voice read narrative with synchronization
       if (voiceEnabled && newChap.narrativeText) {
-        sound.speak(newChap.narrativeText);
+        speakCurrentChapter(newChap.narrativeText);
       }
 
-      // If interactive step exists and hasn't been completed yet
+      // If interactive step exists and hasn't been completed yet, pause video and launch ONLY this challenge
       if (isInteractiveMode && newChap.interactiveStep && !completedSteps.includes(newChap.interactiveStep.id)) {
         setIsPlaying(false);
         setActiveStep(newChap.interactiveStep);
       }
     }
-  }, [currentTime, episode.chapters, activeChapterIndex, isInteractiveMode, completedSteps, voiceEnabled]);
+  }, [currentTime, episode.chapters, activeChapterIndex, isInteractiveMode, completedSteps, voiceEnabled, activeStep]);
 
   // Handle Play/Pause
   const togglePlay = () => {
@@ -119,10 +154,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       sound.playSfx('pop');
       if (isMusicPlaying) sound.startBgm();
       if (voiceEnabled && currentChapter?.narrativeText && currentTime === 0) {
-        sound.speak(currentChapter.narrativeText);
+        speakCurrentChapter(currentChapter.narrativeText);
       }
     } else {
       sound.stopBgm();
+      sound.stopSpeech();
+      setIsNarrationReading(false);
     }
   };
 
@@ -139,29 +176,106 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // Complete interactive step
+  // Jump to specific chapter and auto-activate interactive activity
+  const jumpToChapter = (idx: number) => {
+    if (idx >= 0 && idx < episode.chapters.length) {
+      const targetChap = episode.chapters[idx];
+      setCurrentTime(targetChap.seconds);
+      setActiveChapterIndex(idx);
+      sound.playSfx('pop');
+      if (voiceEnabled && targetChap.narrativeText) {
+        speakCurrentChapter(targetChap.narrativeText);
+      }
+      if (
+        isInteractiveMode &&
+        targetChap.interactiveStep &&
+        !completedSteps.includes(targetChap.interactiveStep.id)
+      ) {
+        setIsPlaying(false);
+        setActiveStep(targetChap.interactiveStep);
+      } else {
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const jumpToNextChapter = () => {
+    const nextIdx = activeChapterIndex + 1;
+    if (nextIdx < episode.chapters.length) {
+      jumpToChapter(nextIdx);
+    } else {
+      onNextEpisode();
+    }
+  };
+
+  const jumpToPrevChapter = () => {
+    const prevIdx = Math.max(0, activeChapterIndex - 1);
+    jumpToChapter(prevIdx);
+  };
+
+  // Complete interactive step and advance to the next chapter/challenge cleanly without overlap
   const handleStepComplete = () => {
     if (activeStep) {
-      setCompletedSteps((prev) => [...prev, activeStep.id]);
-      if (activeStep.id === 'step-crank') {
+      const finishedStepId = activeStep.id;
+      // Mark step as completed first so it can never re-trigger
+      setCompletedSteps((prev) => (prev.includes(finishedStepId) ? prev : [...prev, finishedStepId]));
+
+      if (finishedStepId === 'step-crank') {
         setDispensedTreat('🍭');
         if (onEarnSticker) onEarnSticker('stk-4');
-      } else if (activeStep.id === 'step-teeth') {
+      } else if (finishedStepId === 'step-teeth') {
         if (onEarnSticker) onEarnSticker('stk-1');
-      } else if (activeStep.id === 'step-veggies') {
+      } else if (finishedStepId === 'step-veggies') {
         if (onEarnSticker) onEarnSticker('stk-2');
-      } else if (activeStep.id === 'step-toys') {
+      } else if (finishedStepId === 'step-toys') {
         if (onEarnSticker) onEarnSticker('stk-3');
       }
+
+      // Close current challenge overlay
       setActiveStep(null);
-      setIsPlaying(true);
+
+      // Advance directly to the next chapter so challenges never run at the same time
+      const nextIdx = activeChapterIndex + 1;
+      if (nextIdx < episode.chapters.length) {
+        const nextChap = episode.chapters[nextIdx];
+        setCurrentTime(nextChap.seconds);
+        setActiveChapterIndex(nextIdx);
+        sound.playSfx('pop');
+        if (voiceEnabled && nextChap.narrativeText) {
+          speakCurrentChapter(nextChap.narrativeText);
+        }
+        if (isInteractiveMode && nextChap.interactiveStep && !completedSteps.includes(nextChap.interactiveStep.id)) {
+          setIsPlaying(false);
+          setActiveStep(nextChap.interactiveStep);
+        } else {
+          setIsPlaying(true);
+        }
+      } else {
+        setIsPlaying(true);
+      }
       if (isMusicPlaying) sound.startBgm();
     }
   };
 
   const handleStepSkip = () => {
+    if (activeStep) {
+      const skippedStepId = activeStep.id;
+      setCompletedSteps((prev) => (prev.includes(skippedStepId) ? prev : [...prev, skippedStepId]));
+    }
     setActiveStep(null);
-    setIsPlaying(true);
+    const nextIdx = activeChapterIndex + 1;
+    if (nextIdx < episode.chapters.length) {
+      const nextChap = episode.chapters[nextIdx];
+      setCurrentTime(nextChap.seconds);
+      setActiveChapterIndex(nextIdx);
+      sound.playSfx('pop');
+      if (voiceEnabled && nextChap.narrativeText) {
+        speakCurrentChapter(nextChap.narrativeText);
+      }
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(true);
+    }
   };
 
   // Toggle Fullscreen
@@ -342,21 +456,69 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           {/* --- CENTER: Scene Items / Interactive Props --- */}
           <div className="relative z-10 flex flex-col items-center max-w-[280px] sm:max-w-xs text-center">
             {/* Story Dialogue / Speech Bubble */}
-            <div className="bg-white/95 text-sky-950 p-4 rounded-3xl shadow-2xl border-4 border-yellow-300 relative animate-in zoom-in duration-300 mb-4">
-              <div className="text-xs font-bold text-sky-700 uppercase tracking-wider mb-1">
-                {currentChapter.title.split('-')[1]?.trim() || currentChapter.title}
+            <div className="bg-white/95 text-sky-950 p-4 rounded-3xl shadow-2xl border-4 border-yellow-300 relative animate-in zoom-in duration-300 mb-3 text-left">
+              <div className="flex items-center justify-between text-[11px] font-black text-sky-700 uppercase tracking-wider mb-1">
+                <span>{currentChapter.title.split('-')[1]?.trim() || currentChapter.title}</span>
+                <span className={`flex items-center gap-1 font-bold ${isNarrationReading ? 'text-amber-600 animate-pulse' : 'text-emerald-600'}`}>
+                  <Volume2 className="w-3.5 h-3.5" />
+                  {isNarrationReading ? 'MP Speaking...' : 'MP Voice Ready'}
+                </span>
               </div>
               <p className="text-sm sm:text-base font-extrabold leading-snug">
-                "{currentChapter.narrativeText}"
+                {currentChapter.narrativeText?.split(/\s+/).map((word, wIdx) => {
+                  const isHighlight = activeNarrativeWordIdx === wIdx;
+                  return (
+                    <span
+                      key={wIdx}
+                      className={`inline-block mr-1 transition-all rounded px-0.5 ${
+                        isHighlight
+                          ? 'bg-yellow-300 text-sky-950 font-black scale-105 shadow-xs'
+                          : 'text-sky-950'
+                      }`}
+                    >
+                      {word}
+                    </span>
+                  );
+                })}
               </p>
               {/* Speech triangle tail */}
               <div className="absolute -bottom-3 right-8 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[12px] border-t-yellow-300" />
             </div>
 
-            {/* Current Chapter Badge */}
-            <div className="flex items-center gap-2 bg-sky-900/80 text-yellow-300 text-xs px-3 py-1.5 rounded-full border border-sky-400 backdrop-blur-sm">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Chapter {activeChapterIndex + 1} of {episode.chapters.length}</span>
+            {/* Current Chapter Badge & Instant Next Actions */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex items-center gap-2 bg-sky-900/80 text-yellow-300 text-xs px-3 py-1.5 rounded-full border border-sky-400 backdrop-blur-sm shadow">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Chapter {activeChapterIndex + 1} of {episode.chapters.length}</span>
+              </div>
+
+              {/* Instant Next Habit Activity Trigger: eliminates waiting delay! */}
+              {activeChapterIndex + 1 < episode.chapters.length &&
+                episode.chapters[activeChapterIndex + 1]?.interactiveStep && (
+                  <button
+                    type="button"
+                    onClick={() => jumpToChapter(activeChapterIndex + 1)}
+                    className="bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 hover:from-yellow-300 hover:to-amber-200 text-sky-950 font-black text-xs px-4 py-2 rounded-full shadow-lg border-2 border-white flex items-center gap-1.5 animate-bounce cursor-pointer transform hover:scale-105 active:scale-95 transition-all"
+                    title="Play next habit challenge immediately without waiting"
+                  >
+                    <span className="text-sm">⚡</span>
+                    <span>
+                      Play {episode.chapters[activeChapterIndex + 1].interactiveStep?.title} 🚀
+                    </span>
+                  </button>
+                )}
+
+              {/* If next chapter is narrative or finale, provide Next Chapter button */}
+              {activeChapterIndex + 1 < episode.chapters.length &&
+                !episode.chapters[activeChapterIndex + 1]?.interactiveStep && (
+                  <button
+                    type="button"
+                    onClick={jumpToNextChapter}
+                    className="bg-sky-800/90 hover:bg-sky-700 text-white font-black text-xs px-4 py-1.5 rounded-full shadow border border-sky-300/50 flex items-center gap-1.5 cursor-pointer transform hover:scale-105 active:scale-95 transition-all"
+                  >
+                    <span>Next Chapter ⏭️</span>
+                  </button>
+                )}
             </div>
           </div>
 
@@ -382,6 +544,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         />
       )}
 
+      {/* 3.5 QUICK RETENTION QUIZ (Memory test after episode completes or when selected) */}
+      {showRetentionQuiz && (
+        <QuickRetentionQuiz
+          habitTitle={episode.title}
+          onComplete={(score) => {
+            setShowRetentionQuiz(false);
+            if (score >= 2 && onEarnSticker) {
+              onEarnSticker('stk-super-habit');
+            }
+            onNextEpisode();
+          }}
+          onClose={() => {
+            setShowRetentionQuiz(false);
+            onNextEpisode();
+          }}
+        />
+      )}
+
       {/* 4. YELLOW SUBTITLES / CAPTIONS OVERLAY (YouTube Kids Style) */}
       {showCaptions && (isPlaying || currentTime > 0) && !activeStep && currentChapter && (
         <div className="absolute bottom-16 sm:bottom-20 inset-x-0 flex justify-center z-20 pointer-events-none px-4">
@@ -397,6 +577,44 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           showControls || !isPlaying ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
+        {/* Quick Chapter & Activity Navigation Ribbon */}
+        <div className="mb-2 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+          <span className="text-[10px] uppercase font-black text-yellow-300 shrink-0 flex items-center gap-1 bg-black/50 px-2 py-0.5 rounded-md border border-yellow-400/30">
+            <Sparkles className="w-3 h-3 text-yellow-400" /> Chapters & Activities:
+          </span>
+          {episode.chapters.map((ch, idx) => {
+            const isActive = idx === activeChapterIndex;
+            const hasActivity = Boolean(ch.interactiveStep);
+            const isDone = ch.interactiveStep && completedSteps.includes(ch.interactiveStep.id);
+            return (
+              <button
+                key={ch.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  jumpToChapter(idx);
+                }}
+                className={`shrink-0 px-2.5 py-0.5 rounded-full font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  isActive
+                    ? 'bg-yellow-400 text-sky-950 shadow-md scale-105 border border-yellow-200'
+                    : isDone
+                    ? 'bg-emerald-900/60 text-emerald-200 hover:bg-emerald-800 border border-emerald-500/40'
+                    : hasActivity
+                    ? 'bg-sky-950/80 text-sky-200 hover:bg-sky-800 border border-sky-400/40'
+                    : 'bg-black/40 text-slate-300 hover:bg-black/60 border border-white/10'
+                }`}
+                title={`Jump to ${ch.title}`}
+              >
+                <span>{ch.timestamp}</span>
+                <span>
+                  {hasActivity ? (isDone ? '✅' : '⚡') : ''}{' '}
+                  {ch.interactiveStep ? ch.interactiveStep.title : ch.title.split('-')[1]?.trim() || ch.title}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Scrubbing Bar */}
         <div className="relative mb-2 flex items-center group/scrub">
           <input
@@ -407,13 +625,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onChange={handleScrub}
             className="w-full h-1.5 group-hover/scrub:h-2.5 bg-white/30 rounded-lg appearance-none cursor-pointer accent-red-600 transition-all"
           />
-          {/* Chapter Markers on Scrubber */}
+          {/* Clickable Chapter Markers on Scrubber */}
           {episode.chapters.map((ch, idx) => (
-            <div
+            <button
               key={idx}
-              className="absolute top-0 bottom-0 w-1 bg-yellow-400 pointer-events-none"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                jumpToChapter(idx);
+              }}
+              className="absolute top-0 bottom-0 w-2 hover:w-3 -ml-1 bg-yellow-400 hover:bg-yellow-200 cursor-pointer z-10 transition-all rounded-xs"
               style={{ left: `${(ch.seconds / duration) * 100}%` }}
-              title={ch.title}
+              title={`Jump to: ${ch.title}`}
             />
           ))}
         </div>
@@ -421,7 +644,16 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         {/* Control Buttons Row */}
         <div className="flex items-center justify-between text-white text-xs sm:text-sm">
           {/* Left Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2.5">
+            {/* Prev Chapter */}
+            <button
+              onClick={jumpToPrevChapter}
+              className="p-1.5 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
+              title="Previous Chapter"
+            >
+              <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+
             {/* Play/Pause */}
             <button
               onClick={togglePlay}
@@ -431,13 +663,22 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
               {isPlaying ? <Pause className="w-5 h-5 sm:w-6 sm:h-6" /> : <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current" />}
             </button>
 
+            {/* Next Chapter / Activity Button */}
+            <button
+              onClick={jumpToNextChapter}
+              className="p-1.5 hover:bg-white/20 rounded-full transition-colors cursor-pointer text-yellow-300 hover:text-yellow-200"
+              title="Jump to Next Chapter / Activity"
+            >
+              <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+
             {/* Next Episode */}
             <button
               onClick={onNextEpisode}
-              className="p-1.5 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-white/20 rounded-full transition-colors cursor-pointer text-slate-300 hover:text-white"
               title="Next Episode"
             >
-              <SkipForward className="w-5 h-5" />
+              <FastForward className="w-4 h-4" />
             </button>
 
             {/* Replay */}
